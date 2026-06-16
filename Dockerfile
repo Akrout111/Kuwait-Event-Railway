@@ -7,8 +7,13 @@
 FROM oven/bun:1 AS deps
 WORKDIR /app
 
+# Copy package manifests first
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+
+# Install dependencies WITHOUT running postinstall scripts.
+# (postinstall calls `prisma generate`, which needs the schema file we haven't copied yet.
+# We run `prisma generate` explicitly in the builder stage where the schema is present.)
+RUN bun install --frozen-lockfile --ignore-scripts
 
 # ── Stage 2: Build ──
 FROM oven/bun:1 AS builder
@@ -17,10 +22,13 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Copy installed dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy full source (includes prisma/schema.prisma, src/, public/, etc.)
 COPY . .
 
-# Generate Prisma client (needs schema before build)
+# Generate Prisma client — schema is now available
 RUN bunx prisma generate
 
 # Build Next.js (standalone output mode)
@@ -55,9 +63,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-
-# Copy seed file for optional seeding
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
 USER nextjs
 
