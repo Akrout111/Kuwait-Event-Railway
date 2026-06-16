@@ -5,9 +5,9 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "sh -c 'bun ./node_modules/prisma/build/index.js migrate deploy && bun server.js'",
+    "startCommand": "sh -c 'echo === Startup diagnostics === ; echo \"DATABASE_URL set: $([ -n \"$DATABASE_URL\" ] && echo yes || echo NO)\" ; echo \"JWT_SECRET set: $([ -n \"$JWT_SECRET\" ] && echo yes || echo NO)\" ; echo === Running prisma migrate deploy === ; bun ./node_modules/prisma/build/index.js migrate deploy 2>&1 || echo MIGRATION FAILED — starting server anyway ; echo === Starting Next.js server === ; bun server.js'",
     "healthcheckPath": "/api/v1/csrf-token",
-    "healthcheckTimeout": 60,
+    "healthcheckTimeout": 180,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

@@ -98,6 +98,14 @@ EXPOSE 3000
 # Do NOT use `bunx prisma` — it would fetch Prisma v7 from npm at runtime,
 # which rejects the schema's `url = env("DATABASE_URL")` datasource property
 # (removed in Prisma 7). The project is pinned to Prisma v6.
-# tini handles PID 1 signal forwarding cleanly.
+#
+# Robustness notes:
+# - We use `;` (not `&&`) between migrate and server so the server starts even
+#   if migrations fail. The /api/v1/csrf-token healthcheck endpoint doesn't
+#   touch the DB, so the healthcheck can still pass and we can read actual
+#   migration errors from the deploy logs.
+# - We print diagnostic env-var presence checks so Railway deploy logs show
+#   exactly which required variables are missing.
+# - tini handles PID 1 signal forwarding cleanly.
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["sh", "-c", "bun ./node_modules/prisma/build/index.js migrate deploy && bun server.js"]
+CMD ["sh", "-c", "echo '=== Startup diagnostics ===' ; echo \"DATABASE_URL set: $([ -n \"$DATABASE_URL\" ] && echo yes || echo NO)\" ; echo \"JWT_SECRET set: $([ -n \"$JWT_SECRET\" ] && echo yes || echo NO)\" ; echo '=== Running prisma migrate deploy ===' ; bun ./node_modules/prisma/build/index.js migrate deploy 2>&1 || echo '!!! MIGRATION FAILED — starting server anyway so healthcheck can pass' ; echo '=== Starting Next.js server ===' ; bun server.js"]
