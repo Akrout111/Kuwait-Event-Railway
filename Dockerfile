@@ -1,9 +1,10 @@
 # ─────────────────────────────────────────────────────────────
 # Kuwait Events Platform — Railway-ready Dockerfile
-# Multi-stage build: deps → builder → runner (PostgreSQL + Next.js standalone)
+# Multi-stage build: deps → builder → prod-deps → runner
+# (PostgreSQL + Next.js standalone + full Prisma CLI at runtime)
 # ─────────────────────────────────────────────────────────────
 
-# ── Stage 1: Install dependencies ──
+# ── Stage 1: Install ALL dependencies (for build) ──
 FROM oven/bun:1 AS deps
 WORKDIR /app
 
@@ -36,7 +37,20 @@ RUN bun ./node_modules/prisma/build/index.js generate
 # Build Next.js (standalone output mode)
 RUN bun run build
 
-# ── Stage 3: Production runtime ──
+# ── Stage 3: Production-only dependencies ──
+# Install a clean production node_modules (no devDependencies) so the runner
+# stage has access to ALL transitive runtime deps that the Prisma CLI needs
+# (e.g. `effect`, `c12`, `deepmerge-ts`, `empathic` — required by `@prisma/config`,
+# which is itself required by `prisma migrate deploy`).
+# Without this, the previous Dockerfile only cherry-picked `.prisma`, `@prisma`,
+# and `prisma` directories, leaving these transitive deps missing and crashing
+# the migrate command on startup.
+FROM oven/bun:1 AS prod-deps
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --production --frozen-lockfile --ignore-scripts
+
+# ── Stage 4: Production runtime ──
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
@@ -55,16 +69,25 @@ RUN apt-get update -y && \
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs --no-create-home --home-dir /app nextjs
 
-# Copy standalone Next.js build (already includes server.js + minimal node_modules)
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# 1) Full production node_modules — has Prisma CLI + ALL transitive deps
+#    (effect, c12, deepmerge-ts, empathic, chokidar, jiti, …) that @prisma/config
+#    requires at runtime. This is the fix for the healthcheck crash.
+COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# 2) Overlay the Prisma client generated during the build stage.
+#    (prod-deps didn't run `prisma generate`, so `.prisma` is missing there.)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+
+# 3) Copy Next.js standalone server files WITHOUT pulling in standalone's
+#    minimal node_modules (which would overwrite the full production node_modules
+#    we just installed). We copy only server.js and the .next build output.
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/server.js ./server.js
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy Prisma files needed at runtime (migrations + schema)
+# 4) Prisma schema + migrations (needed by `prisma migrate deploy`)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
 USER nextjs
 
