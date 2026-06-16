@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { CategoryPageClient } from "@/components/features/events/category-page-client";
 import type { Metadata } from "next";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -30,5 +31,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     orderBy: { startDate: "asc" },
   });
 
-  return <CategoryPageClient category={category} events={events} />;
+  // Convert Prisma Decimal fields to string for client component
+  const serializedEvents = serializeDecimal(events);
+
+  return <CategoryPageClient category={category} events={serializedEvents} />;
 }

@@ -92,7 +92,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       id: tier.id,
       nameAr: tier.nameAr,
       type: tier.type,
-      price: tier.price,
+      price: tier.price.toString(),
       quantityTotal: tier.quantityTotal,
       quantitySold: tier.quantitySold,
       quantityAvailable: tier.quantityTotal - tier.quantitySold,
@@ -119,10 +119,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
         ? { nameAr: e.venue.nameAr, nameEn: e.venue.nameEn ?? undefined, city: e.venue.city }
         : { nameAr: "", nameEn: undefined, city: "" },
       category: e.category,
-      lowestPrice: e.ticketTiers[0]?.price ?? "0.000",
+      lowestPrice: (e.ticketTiers[0]?.price ?? "0.000").toString(),
       isFeatured: false,
       ticketTiers: e.ticketTiers.map((t) => ({
-        price: t.price,
+        price: t.price.toString(),
       })),
     })),
   };

@@ -6,6 +6,7 @@ import { StatsBentoGrid } from "@/components/features/home/stats-bento-grid";
 import { TestimonialsSection } from "@/components/features/home/testimonials-section";
 import { CTATrustSection } from "@/components/features/events/cta-trust-section";
 import { CategoryCarousel } from "@/components/features/events/category-carousel";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 export const metadata: Metadata = {
   title: "فعاليات الكويت — Kuwait Events Platform",
@@ -48,12 +49,16 @@ export default async function HomePage() {
   const ticketAgg = await db.ticketTier.aggregate({ _sum: { quantityTotal: true } });
   const ticketCount = ticketAgg._sum.quantityTotal ?? 0;
 
+  // Convert Prisma Decimal fields to string so client components can use them
+  const serializedFeaturedEvents = serializeDecimal(featuredEvents);
+  const serializedCategories = serializeDecimal(categories);
+
   return (
     <>
       <HeroSection3D
         upcomingCount={upcomingCount}
       />
-      <FeaturedEventsGrid events={featuredEvents} />
+      <FeaturedEventsGrid events={serializedFeaturedEvents} />
       <StatsBentoGrid
         eventCount={upcomingCount}
         categoryCount={categoriesCount}
@@ -67,7 +72,7 @@ export default async function HomePage() {
         categoriesCount={categoriesCount}
         venuesCount={venuesCount}
       />
-      <CategoryCarousel categories={categories} />
+      <CategoryCarousel categories={serializedCategories} />
     </>
   );
 }

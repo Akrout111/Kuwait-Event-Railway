@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { VenuePageClient } from "@/components/features/events/venue-page-client";
 import type { Metadata } from "next";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -35,5 +36,8 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
   });
   if (!venue) notFound();
 
-  return <VenuePageClient venue={venue} />;
+  // Convert Prisma Decimal fields to string for client component
+  const serializedVenue = serializeDecimal(venue);
+
+  return <VenuePageClient venue={serializedVenue} />;
 }

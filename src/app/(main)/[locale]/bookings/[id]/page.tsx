@@ -51,9 +51,12 @@ export default async function BookingDetailPage({
 
   const { pending } = await searchParams;
 
-  // Serialize Date objects to ISO strings for client component
+  // Serialize Date and Decimal objects for client component
+  // (Prisma Decimal fields must be converted to string — they are not JSON-serializable
+  //  and the BookingDetailClient expects them as string)
   const bookingData = {
     ...booking,
+    totalAmount: booking.totalAmount.toString(),
     createdAt: booking.createdAt.toISOString(),
     updatedAt: booking.updatedAt.toISOString(),
     deletedAt: booking.deletedAt?.toISOString() ?? null,
@@ -65,12 +68,15 @@ export default async function BookingDetailPage({
       id: t.id,
       ticketNumber: t.ticketNumber,
       qrCodeUrl: t.qrCodeUrl,
-      ticketTier: { ...t.ticketTier },
+      ticketTier: {
+        ...t.ticketTier,
+        price: t.ticketTier.price.toString(),
+      },
     })),
     payment: booking.payment
       ? {
           id: booking.payment.id,
-          amount: booking.payment.amount,
+          amount: booking.payment.amount.toString(),
           status: booking.payment.status,
           method: booking.payment.method,
         }
