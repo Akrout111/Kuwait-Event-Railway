@@ -28,8 +28,10 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy full source (includes prisma/schema.prisma, src/, public/, etc.)
 COPY . .
 
-# Generate Prisma client — schema is now available
-RUN bunx prisma generate
+# Generate Prisma client — schema is now available.
+# Invoke the locally-installed Prisma CLI directly (NOT `bunx prisma`, which would
+# fetch the latest Prisma v7 from npm at runtime and break the v6 schema).
+RUN bun ./node_modules/prisma/build/index.js generate
 
 # Build Next.js (standalone output mode)
 RUN bun run build
@@ -68,7 +70,11 @@ USER nextjs
 
 EXPOSE 3000
 
-# Entrypoint: run migrations, then start the Next.js server
-# Uses a shell form so we can chain commands; tini handles signals cleanly
+# Entrypoint: run migrations, then start the Next.js server.
+# IMPORTANT: invoke the locally-installed Prisma CLI via its script path.
+# Do NOT use `bunx prisma` — it would fetch Prisma v7 from npm at runtime,
+# which rejects the schema's `url = env("DATABASE_URL")` datasource property
+# (removed in Prisma 7). The project is pinned to Prisma v6.
+# tini handles PID 1 signal forwarding cleanly.
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["sh", "-c", "bunx prisma migrate deploy && bun server.js"]
+CMD ["sh", "-c", "bun ./node_modules/prisma/build/index.js migrate deploy && bun server.js"]
