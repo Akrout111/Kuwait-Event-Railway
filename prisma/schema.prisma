@@ -1,0 +1,320 @@
+// schema.prisma — منصة فعاليات الكويت
+// PostgreSQL — production schema (Supabase / Railway)
+// Native enums, Decimal for KWD currency (3 decimals), Json for structured data.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────────────────────────
+// NATIVE ENUMS (PostgreSQL)
+// ───────────────────────────────────────────────
+
+enum Role {
+  ATTENDEE
+  ORGANIZER
+  ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  SOLD_OUT
+  COMPLETED
+}
+
+enum TicketType {
+  STANDARD
+  VIP
+  EARLY_BIRD
+  GROUP
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  KNET
+  CREDIT_CARD
+}
+
+enum NotificationType {
+  INFO
+  BOOKING
+  REMINDER
+  REVIEW
+  PAYMENT
+}
+
+// ───────────────────────────────────────────────
+// MODELS
+// ───────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique @map("clerk_id") // Used for both Clerk sync and custom auth
+  email         String    @unique
+  name          String
+  phone         String?
+  avatarUrl     String?   @map("avatar_url")
+  passwordHash  String?   @map("password_hash") // For custom auth (nullable for Clerk-only users)
+  role          Role      @default(ATTENDEE)
+  isActive      Boolean   @default(true) @map("is_active")
+
+  // Soft Delete
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Timestamps
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  events        Event[]        @relation("OrganizerEvents")
+  bookings      Booking[]
+  reviews       Review[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([clerkId])
+  @@index([role])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  nameAr      String   @map("name_ar")
+  nameEn      String   @map("name_en")
+  slug        String   @unique
+  iconUrl     String?  @map("icon_url")
+  description String?
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  events      Event[]
+
+  @@index([slug])
+  @@map("categories")
+}
+
+model Venue {
+  id          String   @id @default(cuid())
+  nameAr      String   @map("name_ar")
+  nameEn      String?  @map("name_en")
+  slug        String   @unique
+  address     String
+  city        String   @default("الكويت")
+  coordinates String?
+  capacity    Int?
+  description String?
+  imageUrl    String?  @map("image_url")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  events      Event[]
+
+  @@index([slug])
+  @@index([city])
+  @@map("venues")
+}
+
+model Event {
+  id              String      @id @default(cuid())
+  titleAr         String      @map("title_ar")
+  titleEn         String?     @map("title_en")
+  slug            String      @unique
+  descriptionAr   String      @map("description_ar")
+  descriptionEn   String?     @map("description_en")
+  coverImageUrl   String      @map("cover_image_url")
+  galleryUrls     Json        @default("[]") @map("gallery_urls")
+  startDate       DateTime    @map("start_date")
+  endDate         DateTime?   @map("end_date")
+  startTime       String      @map("start_time")
+  endTime         String?     @map("end_time")
+  status          EventStatus @default(DRAFT) @map("status")
+  isFeatured      Boolean     @default(false) @map("is_featured")
+  metadata        Json        @default("{}")
+  minPrice        Decimal?    @default(0) @db.Decimal(10, 3) @map("min_price") // Cached minimum ticket price (KWD)
+  deletedAt       DateTime?   @map("deleted_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  organizerId     String      @map("organizer_id")
+  categoryId      String      @map("category_id")
+  venueId         String?     @map("venue_id")
+
+  organizer       User        @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  category        Category    @relation(fields: [categoryId], references: [id])
+  venue           Venue?      @relation(fields: [venueId], references: [id])
+  ticketTiers     TicketTier[]
+  bookings        Booking[]
+  reviews         Review[]
+
+  @@index([organizerId])
+  @@index([categoryId])
+  @@index([venueId])
+  @@index([status])
+  @@index([startDate])
+  @@index([isFeatured])
+  @@index([deletedAt])
+  @@index([slug])
+  @@map("events")
+}
+
+model TicketTier {
+  id              String    @id @default(cuid())
+  nameAr          String    @map("name_ar")
+  nameEn          String?   @map("name_en")
+  type            TicketType @default(STANDARD) @map("type")
+  price           Decimal   @default(0) @db.Decimal(10, 3) // KWD
+  quantityTotal   Int       @map("quantity_total")
+  quantitySold    Int       @default(0) @map("quantity_sold")
+  maxPerBooking   Int       @default(10) @map("max_per_booking")
+  description     String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  eventId         String    @map("event_id")
+
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets         Ticket[]
+
+  @@index([eventId])
+  @@index([type])
+  @@map("ticket_tiers")
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  bookingNumber   String        @unique @map("booking_number")
+  status          BookingStatus @default(PENDING) @map("status")
+  totalAmount     Decimal       @default(0) @db.Decimal(10, 3) @map("total_amount") // KWD
+  quantity        Int
+  attendeeName    String        @map("attendee_name")
+  attendeePhone   String        @map("attendee_phone")
+  attendeeEmail   String        @map("attendee_email")
+  deletedAt       DateTime?     @map("deleted_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  userId          String        @map("user_id")
+  eventId         String        @map("event_id")
+
+  user            User          @relation(fields: [userId], references: [id])
+  event           Event         @relation(fields: [eventId], references: [id])
+  tickets         Ticket[]
+  payment         Payment?
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+  @@index([bookingNumber])
+  @@index([deletedAt])
+  @@index([userId, eventId])
+  @@map("bookings")
+}
+
+model Ticket {
+  id              String    @id @default(cuid())
+  ticketNumber    String    @unique @map("ticket_number")
+  qrCodeUrl       String?   @map("qr_code_url")
+  isUsed          Boolean   @default(false) @map("is_used")
+  usedAt          DateTime? @map("used_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  ticketTierId    String    @map("ticket_tier_id")
+  bookingId       String    @map("booking_id")
+
+  ticketTier      TicketTier @relation(fields: [ticketTierId], references: [id])
+  booking         Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([ticketTierId])
+  @@index([bookingId])
+  @@index([ticketNumber])
+  @@map("tickets")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  transactionId   String?       @unique @map("transaction_id")
+  amount          Decimal       @default(0) @db.Decimal(10, 3) // KWD
+  currency        String        @default("KWD")
+  status          PaymentStatus @default(PENDING) @map("status")
+  method          PaymentMethod @default(KNET) @map("method")
+  knetPaymentId   String?       @map("knet_payment_id")
+  knetResult      String?       @map("knet_result")
+  refundedAt      DateTime?     @map("refunded_at")
+  refundReason    String?       @map("refund_reason")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  bookingId       String        @unique @map("booking_id")
+
+  booking         Booking   @relation(fields: [bookingId], references: [id])
+
+  @@index([status])
+  @@index([transactionId])
+  @@index([bookingId])
+  @@map("payments")
+}
+
+model Review {
+  id                String    @id @default(cuid())
+  rating            Int
+  comment           String?
+  organizerReply    String?   @map("organizer_reply")
+  organizerRepliedAt DateTime? @map("organizer_replied_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  userId            String    @map("user_id")
+  eventId           String    @map("event_id")
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([eventId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  titleAr   String           @map("title_ar")
+  titleEn   String           @map("title_en")
+  bodyAr    String           @map("body_ar")
+  bodyEn    String           @map("body_en")
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  readAt    DateTime?        @map("read_at")
+  link      String?
+  data      Json?            @default("{}") @map("data")
+  userId    String           @map("user_id")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}

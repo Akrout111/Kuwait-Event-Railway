@@ -1,0 +1,26 @@
+# NOTE: This workflow only verifies the build succeeds on main.
+# Actual deployment must be configured by adding deployment steps.
+# Options: Vercel CLI, Docker + SSH, AWS/GCP/Azure deploy actions, etc.
+
+name: Build Verification
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  verify-build:
+    name: Verify Production Build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "file:./ci-test.db"
+      JWT_SECRET: "ci-test-jwt-secret-minimum-32-characters-long"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_placeholder"
+      CLERK_SECRET_KEY: "sk_test_placeholder"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate
+      - run: bun run db:push
+      - run: bun run build
