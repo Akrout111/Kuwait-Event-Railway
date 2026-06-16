@@ -8,15 +8,19 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { DEV_JWT_SECRET } from "./constants";
 
-// Ensure JWT_SECRET is available — provide a dev default if missing
-if (!process.env.JWT_SECRET) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("JWT_SECRET environment variable is required in production");
+// JWT secret resolution — deferred to runtime so the build can succeed
+// without secrets. We do NOT throw at module-eval time (Next.js evaluates
+// route modules during `next build` to collect page data).
+function getJwtSecret(): string {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  // Allow dev fallback in non-production (e.g. local `next dev`)
+  if (process.env.NODE_ENV !== "production") {
+    return DEV_JWT_SECRET;
   }
-  process.env.JWT_SECRET = DEV_JWT_SECRET;
+  // Production runtime without secret — throw at call time, not module-eval time
+  throw new Error("JWT_SECRET environment variable is required in production");
 }
 
-const JWT_SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = 10;
 
 /** Hash a plaintext password */
@@ -31,13 +35,13 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 /** Create a JWT token for a user */
 export function createToken(payload: { userId: string; email: string; role: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "1d" });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: "1d" });
 }
 
 /** Verify and decode a JWT token */
 export function verifyToken(token: string): { userId: string; email: string; role: string } | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string };
+    return jwt.verify(token, getJwtSecret()) as { userId: string; email: string; role: string };
   } catch {
     return null;
   }

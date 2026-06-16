@@ -6,6 +6,7 @@ import { updateEventSchema } from "@/lib/validators/event-schema";
 import { generateUniqueSlug } from "@/lib/slug";
 import { logger } from "@/lib/logger";
 import { updateEventMinPrice } from "@/lib/update-event-prices";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 // GET /api/v1/events/:id — Get single event (supports both id and slug)
 export async function GET(
@@ -46,8 +47,12 @@ export async function GET(
       _count: { rating: true },
     });
 
-    const eventWithStats = {
+    const eventWithStats = serializeDecimal({
       ...event,
+      startDate: event.startDate.toISOString(),
+      endDate: event.endDate?.toISOString() ?? null,
+      createdAt: event.createdAt.toISOString(),
+      updatedAt: event.updatedAt.toISOString(),
       ticketTiers: event.ticketTiers.map((tier) => ({
         ...tier,
         quantityAvailable: tier.quantityTotal - tier.quantitySold,
@@ -62,9 +67,10 @@ export async function GET(
           organizerReply: r.organizerReply,
           organizerRepliedAt: r.organizerRepliedAt?.toISOString() ?? null,
           createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
         })),
       },
-    };
+    });
 
     return successResponse({ event: eventWithStats }, "تم جلب الفعالية بنجاح");
   } catch (error: unknown) {
@@ -230,6 +236,7 @@ function serializeEvent(event: Record<string, unknown>) {
     ...event,
     startDate: (event.startDate as Date)?.toISOString?.() ?? event.startDate,
     endDate: (event.endDate as Date)?.toISOString?.() ?? event.endDate,
+    minPrice: event.minPrice != null ? String(event.minPrice) : event.minPrice,
     ticketTiers: Array.isArray(event.ticketTiers)
       ? event.ticketTiers.map((t: Record<string, unknown>) => ({
           ...t,

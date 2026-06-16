@@ -19,7 +19,7 @@ export default async function HomePage() {
       where: { isFeatured: true, status: "PUBLISHED", deletedAt: null },
       include: {
         venue: { select: { nameAr: true, nameEn: true, city: true } },
-        category: { select: { nameAr: true, nameEn: true, slug: true } },
+        category: { select: { id: true, nameAr: true, nameEn: true, slug: true } },
         ticketTiers: {
           select: { price: true, quantityTotal: true, quantitySold: true },
         },
@@ -50,7 +50,7 @@ export default async function HomePage() {
   const ticketCount = ticketAgg._sum.quantityTotal ?? 0;
 
   // Convert Prisma Decimal fields to string so client components can use them
-  const serializedFeaturedEvents = serializeDecimal(featuredEvents);
+  const serializedFeaturedEvents = serializeDecimal(featuredEvents) as unknown as import("@/types/api").EventItem[];
   const serializedCategories = serializeDecimal(categories);
 
   return (

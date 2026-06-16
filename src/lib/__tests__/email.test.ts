@@ -1,3 +1,4 @@
+// @ts-nocheck — test file uses vitest mocks with unknown types
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Use vi.hoisted to ensure mock functions are available when vi.mock factory runs

@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         eventTime: booking.event.startTime,
         venueName: booking.event.venue?.nameAr ?? "غير محدد",
         ticketCount: booking.quantity,
-        totalAmount: booking.totalAmount,
+        totalAmount: booking.totalAmount.toString(),
         bookingId: booking.id,
         appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
       }).catch((err: unknown) => logger.error("knet-callback", "Confirmation email failed", err));

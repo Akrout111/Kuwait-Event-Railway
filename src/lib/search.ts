@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 export interface SearchEventsParams {
   query?: string;
@@ -82,13 +83,17 @@ export async function searchEvents({
     db.event.count({ where }),
   ]);
 
-  const eventsWithAvailability = events.map((event) => ({
+  const eventsWithAvailability = serializeDecimal(events.map((event) => ({
     ...event,
+    startDate: event.startDate.toISOString(),
+    endDate: event.endDate?.toISOString() ?? null,
+    createdAt: event.createdAt.toISOString(),
+    updatedAt: event.updatedAt.toISOString(),
     ticketTiers: event.ticketTiers.map((tier) => ({
       ...tier,
       quantityAvailable: tier.quantityTotal - tier.quantitySold,
     })),
-  }));
+  })));
 
   return {
     events: eventsWithAvailability,

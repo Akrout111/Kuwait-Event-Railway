@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth-server";
 import { createEventSchema } from "@/lib/validators/event-schema";
 import { generateUniqueSlug } from "@/lib/slug";
 import { updateEventMinPrice } from "@/lib/update-event-prices";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 export async function GET(req: NextRequest) {
   try {
@@ -78,13 +79,17 @@ export async function GET(req: NextRequest) {
       db.event.count({ where }),
     ]);
 
-    const eventsWithAvailability = events.map((event) => ({
+    const eventsWithAvailability = serializeDecimal(events.map((event) => ({
       ...event,
+      startDate: event.startDate.toISOString(),
+      endDate: event.endDate?.toISOString() ?? null,
+      createdAt: event.createdAt.toISOString(),
+      updatedAt: event.updatedAt.toISOString(),
       ticketTiers: event.ticketTiers.map((tier) => ({
         ...tier,
         quantityAvailable: tier.quantityTotal - tier.quantitySold,
       })),
-    }));
+    })));
 
     return successResponse(
       { events: eventsWithAvailability },
@@ -177,6 +182,7 @@ function serializeEvent(event: Record<string, unknown>) {
     ...event,
     startDate: (event.startDate as Date)?.toISOString?.() ?? event.startDate,
     endDate: (event.endDate as Date)?.toISOString?.() ?? event.endDate,
+    minPrice: event.minPrice != null ? String(event.minPrice) : event.minPrice,
     ticketTiers: Array.isArray(event.ticketTiers)
       ? event.ticketTiers.map((t: Record<string, unknown>) => ({
           ...t,

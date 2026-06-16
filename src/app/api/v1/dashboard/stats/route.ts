@@ -44,9 +44,9 @@ export async function GET() {
       }),
     ]);
 
-    // Calculate total spent in JS since _sum doesn't work on String fields in SQLite
+    // Calculate total spent in JS (Prisma Decimal → string → number)
     const totalSpent = totalSpentRows.reduce(
-      (sum, b) => sum + parseFloat(b.totalAmount),
+      (sum, b) => sum + parseFloat(b.totalAmount.toString()),
       0
     );
 

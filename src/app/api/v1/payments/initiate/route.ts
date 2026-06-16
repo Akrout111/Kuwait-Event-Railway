@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     // 5. بدء الدفع عبر KNet
-    const amount = booking.totalAmount;
+    const amount = booking.totalAmount.toString();
     const knetResult = await initiateKNetPayment({
       bookingId,
       amount,
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
         payment: {
           id: payment.id,
           status: payment.status,
-          amount: payment.amount,
+          amount: payment.amount.toString(),
           currency: payment.currency,
         },
         redirectUrl: knetResult.redirectUrl,

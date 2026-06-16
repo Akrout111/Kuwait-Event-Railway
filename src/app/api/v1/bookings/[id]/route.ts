@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-server";
 import { logger } from "@/lib/logger";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 /**
  * GET /api/v1/bookings/:id — تفاصيل حجز
@@ -45,19 +46,32 @@ export async function GET(
       return errorResponse("FORBIDDEN", "ليس لديك صلاحية لعرض هذا الحجز", undefined, 403);
     }
 
-    // Prices are already strings in SQLite
+    // Convert Prisma Decimal fields (totalAmount, ticketTier.price, payment.amount) to strings
+    const serialized = serializeDecimal({
+      ...booking,
+      createdAt: booking.createdAt.toISOString(),
+      updatedAt: booking.updatedAt.toISOString(),
+      event: {
+        ...booking.event,
+        startDate: booking.event.startDate.toISOString(),
+      },
+      tickets: booking.tickets.map((t) => ({
+        ...t,
+        ticketTier: { ...t.ticketTier },
+      })),
+      payment: booking.payment
+        ? {
+            ...booking.payment,
+            createdAt: booking.payment.createdAt.toISOString(),
+            updatedAt: booking.payment.updatedAt.toISOString(),
+            refundedAt: booking.payment.refundedAt?.toISOString() ?? null,
+          }
+        : null,
+    });
+
     return successResponse(
       {
-        booking: {
-          ...booking,
-          tickets: booking.tickets.map((t) => ({
-            ...t,
-            ticketTier: { ...t.ticketTier },
-          })),
-          payment: booking.payment
-            ? { ...booking.payment }
-            : null,
-        },
+        booking: serialized,
       },
       "تم جلب تفاصيل الحجز"
     );

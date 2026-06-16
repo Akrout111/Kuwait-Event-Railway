@@ -102,7 +102,7 @@ export interface BookingItem {
     coverImageUrl: string;
     startDate: string;
     startTime: string;
-    venue?: { nameAr: string } | null;
+    venue?: { nameAr: string; nameEn?: string | null } | null;
   };
   tickets?: Array<{
     id: string;

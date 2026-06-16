@@ -15,7 +15,7 @@ interface EventData {
   slug: string;
   coverImageUrl: string;
   startDate: string;
-  startTime?: string | null;
+  startTime?: string;
   venue?: { nameAr: string; nameEn?: string | null; city: string } | null;
   category?: { id: string; nameAr: string; nameEn?: string | null; slug: string } | null;
   ticketTiers: Array<{
@@ -67,7 +67,10 @@ export function SearchResults() {
     );
   }
 
-  const events = (searchResult?.data?.events ?? []) as EventData[];
+  const events = ((searchResult?.data?.events ?? []) as EventData[]).map((e) => ({
+    ...e,
+    startTime: e.startTime ?? undefined,
+  }));
   const meta = searchResult?.meta as
     | { page: number; limit: number; total: number; totalPages: number }
     | undefined;

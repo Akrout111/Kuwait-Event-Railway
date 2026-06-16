@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const where: Prisma.EventWhereInput = {};
 
     if (!includeDeleted) where.deletedAt = null;
-    if (status) where.status = status;
+    if (status) where.status = status as Prisma.EventWhereInput["status"];
     if (isFeatured !== null && isFeatured !== undefined && isFeatured !== "") {
       where.isFeatured = isFeatured === "true";
     }
@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
           startDate: e.startDate.toISOString(),
           createdAt: e.createdAt.toISOString(),
           deletedAt: e.deletedAt?.toISOString() ?? null,
+          minPrice: e.minPrice != null ? e.minPrice.toString() : null,
           ticketTiers: e.ticketTiers.map((t) => ({
             ...t,
             price: t.price.toString(),

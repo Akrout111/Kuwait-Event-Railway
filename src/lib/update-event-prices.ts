@@ -12,7 +12,7 @@ export async function updateEventMinPrice(eventId: string): Promise<void> {
 
   if (tiers.length === 0) return;
 
-  const prices = tiers.map((t) => parseFloat(t.price));
+  const prices = tiers.map((t) => parseFloat(t.price.toString()));
   const minPrice = Math.min(...prices);
 
   await db.event.update({

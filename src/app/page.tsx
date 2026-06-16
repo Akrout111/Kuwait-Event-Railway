@@ -1,10 +1,10 @@
 import { redirect } from "@/i18n/routing";
 import { headers } from "next/headers";
 
-export default function RootPage() {
+export default async function RootPage() {
   // Detect browser language preference and redirect accordingly
-  const headersList = headers();
+  const headersList = await headers();
   const acceptLanguage = headersList.get("accept-language") ?? "";
   const prefersAr = acceptLanguage.includes("ar");
-  redirect(prefersAr ? "/ar" : "/en");
+  redirect({ href: prefersAr ? "/ar" : "/en", locale: prefersAr ? "ar" : "en" });
 }

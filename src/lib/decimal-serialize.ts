@@ -49,7 +49,6 @@ export function serializeDecimal<T>(value: T): T {
   if (typeof value === "object") {
     const result: Record<string, unknown> = {};
     for (const key of Object.keys(value as Record<string, unknown>)) {
-      // @ts-expect-error — we are constructing a new object
       result[key] = serializeDecimal((value as Record<string, unknown>)[key]);
     }
     return result as unknown as T;

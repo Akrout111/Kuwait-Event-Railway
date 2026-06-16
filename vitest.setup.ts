@@ -1,3 +1,4 @@
+// @ts-nocheck — vitest setup file; `vi` is provided globally by vitest at runtime.
 import '@testing-library/jest-dom';
 
 vi.mock('next/headers', () => ({

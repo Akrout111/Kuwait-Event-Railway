@@ -62,7 +62,7 @@ export function OrganizerReviews() {
     if (!replyText.trim()) return;
 
     replyMutation.mutate(
-      { reviewId, reply: replyText.trim() },
+      { reviewId, reply: replyText.trim(), eventId: selectedEventId || "" },
       {
         onSuccess: () => {
           setReplyingTo(null);

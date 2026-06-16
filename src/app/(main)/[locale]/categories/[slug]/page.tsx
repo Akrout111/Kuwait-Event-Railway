@@ -23,7 +23,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     where: { category: { slug }, status: "PUBLISHED", deletedAt: null },
     include: {
       venue: { select: { nameAr: true, nameEn: true, city: true } },
-      category: { select: { nameAr: true, nameEn: true, slug: true } },
+      category: { select: { id: true, nameAr: true, nameEn: true, slug: true } },
       ticketTiers: {
         select: { price: true, quantityTotal: true, quantitySold: true },
       },
@@ -32,7 +32,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   });
 
   // Convert Prisma Decimal fields to string for client component
-  const serializedEvents = serializeDecimal(events);
+  const serializedEvents = serializeDecimal(events) as unknown as import("@/types/api").EventItem[];
 
   return <CategoryPageClient category={category} events={serializedEvents} />;
 }

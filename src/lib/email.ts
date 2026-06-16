@@ -1,7 +1,16 @@
 import { Resend } from "resend";
 import { logger } from "@/lib/logger";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-initialize Resend client so the module can be evaluated at build time
+// without an API key. The client is only created when `sendEmail` is actually
+// called at runtime.
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY ?? "");
+  }
+  return _resend;
+}
 
 interface EmailOptions {
   to: string;
@@ -20,7 +29,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
   }
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: process.env.EMAIL_FROM ?? "noreply@kuwaitevents.com",
       to,
       subject,

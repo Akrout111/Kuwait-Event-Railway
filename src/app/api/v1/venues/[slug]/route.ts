@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 export async function GET(
   _req: Request,
@@ -15,7 +16,7 @@ export async function GET(
         events: {
           where: { status: "PUBLISHED", deletedAt: null, startDate: { gte: new Date() } },
           include: {
-            category: { select: { nameAr: true, nameEn: true, slug: true } },
+            category: { select: { id: true, nameAr: true, nameEn: true, slug: true } },
             ticketTiers: {
               select: { price: true },
               take: 1,
@@ -32,7 +33,7 @@ export async function GET(
       return errorResponse("VENUE_NOT_FOUND", "المكان غير موجود", undefined, 404);
     }
 
-    const venueWithEvents = {
+    const venueWithEvents = serializeDecimal({
       ...venue,
       events: venue.events.map((e) => ({
         id: e.id,
@@ -40,12 +41,12 @@ export async function GET(
         titleEn: e.titleEn,
         slug: e.slug,
         coverImageUrl: e.coverImageUrl,
-        startDate: e.startDate,
+        startDate: e.startDate.toISOString(),
         startTime: e.startTime,
         category: e.category,
         lowestPrice: e.ticketTiers[0]?.price ?? "0.000",
       })),
-    };
+    });
 
     return successResponse({ venue: venueWithEvents }, "تم جلب المكان");
   } catch (error: unknown) {

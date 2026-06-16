@@ -7,6 +7,7 @@ import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit";
 import type { Prisma } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { updateEventMinPrice } from "@/lib/update-event-prices";
+import { serializeDecimal } from "@/lib/decimal-serialize";
 
 /**
  * POST /api/v1/bookings — إنشاء حجز مبدئي
@@ -60,13 +61,13 @@ export async function POST(req: Request) {
         return errorResponse("VALIDATION_ERROR", `الحد الأقصى للحجز لفئة "${tier.nameAr}" هو ${tier.maxPerBooking}`, undefined, 400);
       }
 
-      const tierTotal = parseFloat(tier.price) * item.quantity;
+      const tierTotal = parseFloat(tier.price.toString()) * item.quantity;
       totalAmount += tierTotal;
       totalQuantity += item.quantity;
       ticketRecords.push({
         ticketTierId: tier.id,
         quantity: item.quantity,
-        price: tier.price,
+        price: tier.price.toString(),
         maxPerBooking: tier.maxPerBooking,
       });
     }
@@ -138,7 +139,7 @@ export async function POST(req: Request) {
           id: booking.id,
           bookingNumber: booking.bookingNumber,
           status: booking.status,
-          totalAmount: booking.totalAmount,
+          totalAmount: booking.totalAmount.toString(),
           quantity: booking.quantity,
           event: {
             id: event.id,
@@ -176,7 +177,7 @@ export async function GET(req: Request) {
       userId: dbUser.id,
       deletedAt: null,
     };
-    if (status) where.status = status;
+    if (status) where.status = status as Prisma.BookingWhereInput["status"];
 
     const [bookings, total] = await Promise.all([
       db.booking.findMany({
@@ -191,7 +192,7 @@ export async function GET(req: Request) {
               coverImageUrl: true,
               startDate: true,
               startTime: true,
-              venue: { select: { nameAr: true } },
+              venue: { select: { nameAr: true, nameEn: true } },
             },
           },
           tickets: {
@@ -208,16 +209,20 @@ export async function GET(req: Request) {
       db.booking.count({ where }),
     ]);
 
-    // Prices are already strings in SQLite, no conversion needed
-    const bookingsWithStringAmounts = bookings.map((b) => ({
+    // Convert Prisma Decimal fields (totalAmount, ticketTier.price) to strings for client
+    const bookingsWithStringAmounts = serializeDecimal(bookings.map((b) => ({
       ...b,
+      createdAt: b.createdAt.toISOString(),
+      updatedAt: b.updatedAt.toISOString(),
+      event: {
+        ...b.event,
+        startDate: b.event.startDate.toISOString(),
+      },
       tickets: b.tickets.map((t) => ({
         ...t,
-        ticketTier: {
-          ...t.ticketTier,
-        },
+        ticketTier: { ...t.ticketTier },
       })),
-    }));
+    })));
 
     return successResponse(
       { bookings: bookingsWithStringAmounts },

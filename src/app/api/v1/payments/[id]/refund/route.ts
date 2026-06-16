@@ -61,7 +61,7 @@ export async function POST(
     const knetResult = await refundKNetPayment({
       paymentId: payment.knetPaymentId ?? "",
       transactionId: payment.transactionId ?? "",
-      amount: payment.amount,
+      amount: payment.amount.toString(),
       reason,
     });
 

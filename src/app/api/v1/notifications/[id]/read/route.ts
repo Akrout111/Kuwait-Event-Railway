@@ -35,10 +35,10 @@ export async function PATCH(
       },
     });
 
-    // 5. Parse data field from JSON string
+    // 5. data field is already a parsed JSON value in PostgreSQL (Prisma Json type)
     const parsedNotification = {
       ...updated,
-      data: updated.data ? JSON.parse(updated.data) : null,
+      data: updated.data ?? null,
     };
 
     return successResponse(

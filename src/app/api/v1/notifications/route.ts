@@ -52,10 +52,11 @@ export async function GET(req: Request) {
       db.notification.count({ where }),
     ]);
 
-    // 5. Parse the `data` field from JSON string to object (SQLite stores it as string)
+    // 5. Parse the `data` field — in PostgreSQL with Prisma, `Json` fields are returned
+    // as parsed objects (not strings), so we pass them through directly.
     const parsedNotifications = notifications.map((n) => ({
       ...n,
-      data: n.data ? JSON.parse(n.data) : null,
+      data: n.data ?? null,
     }));
 
     // 6. Return with pagination meta

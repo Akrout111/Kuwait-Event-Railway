@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    if (role) where.role = role;
+    if (role) where.role = role as Prisma.UserWhereInput["role"];
     if (isActive !== null && isActive !== undefined && isActive !== "") {
       where.isActive = isActive === "true";
     }

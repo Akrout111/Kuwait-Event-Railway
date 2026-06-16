@@ -22,7 +22,7 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
       events: {
         where: { status: "PUBLISHED", deletedAt: null, startDate: { gte: new Date() } },
         include: {
-          category: { select: { nameAr: true, nameEn: true, slug: true } },
+          category: { select: { id: true, nameAr: true, nameEn: true, slug: true } },
           ticketTiers: {
             select: { price: true, quantityTotal: true, quantitySold: true },
             take: 1,
@@ -37,7 +37,7 @@ export default async function VenuePage({ params }: { params: Promise<{ slug: st
   if (!venue) notFound();
 
   // Convert Prisma Decimal fields to string for client component
-  const serializedVenue = serializeDecimal(venue);
+  const serializedVenue = serializeDecimal(venue) as unknown as import("@/types/api").VenueDetail;
 
   return <VenuePageClient venue={serializedVenue} />;
 }

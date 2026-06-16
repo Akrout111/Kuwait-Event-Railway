@@ -62,7 +62,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     },
     include: {
       venue: { select: { nameAr: true, nameEn: true, city: true } },
-      category: { select: { nameAr: true, nameEn: true, slug: true } },
+      category: { select: { id: true, nameAr: true, nameEn: true, slug: true } },
       ticketTiers: {
         select: { price: true },
         take: 1,

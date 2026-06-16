@@ -30,9 +30,9 @@ export async function GET() {
       }),
     ]);
 
-    // Calculate total revenue in JS since _sum doesn't work on String fields in SQLite
+    // Calculate total revenue in JS (Prisma Decimal → string → number)
     const totalRevenue = totalRevenueRows.reduce(
-      (sum, b) => sum + parseFloat(b.totalAmount),
+      (sum, b) => sum + parseFloat(b.totalAmount.toString()),
       0
     );
 

@@ -63,7 +63,7 @@ export function FilterPanel({ categories, venues }: FilterPanelProps) {
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="end" className="w-full sm:w-[400px] overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:w-[400px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center justify-between">
             {t("filterPanel")}
