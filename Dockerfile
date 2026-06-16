@@ -49,9 +49,9 @@ RUN apt-get update -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+# Create non-root user for security (Debian-based image uses groupadd/useradd, not addgroup/adduser)
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs --no-create-home --home-dir /app nextjs
 
 # Copy standalone Next.js build (already includes server.js + minimal node_modules)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
